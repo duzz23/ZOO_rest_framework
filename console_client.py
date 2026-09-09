@@ -1,7 +1,7 @@
 import requests
 
 
-url = 'http://127.0.0.1:8000/api/categories/'
+# url = 'http://127.0.0.1:8000/api/categories/'
 
 
 # HEAD
@@ -33,7 +33,7 @@ url = 'http://127.0.0.1:8000/api/categories/'
 # print(response.status_code)  # 200
 # print(response.json())
 
-url = 'http://127.0.0.1:8000/api/categories/6/'
+url = 'http://127.0.0.1:8000/api/categories/5/'
 
 # # HEAD
 # response = requests.head(url)
