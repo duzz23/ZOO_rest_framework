@@ -7,4 +7,5 @@ app_name = 'api'
 urlpatterns = [
     path('', include(router.urls)),
     path('custom/', CategoryList.as_view()),
+    # path("animals/", AnimalListView.as_view())
 ]
