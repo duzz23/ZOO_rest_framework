@@ -7,6 +7,7 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = '__all__'
 
+# Это сериализатор будут для показа
 class AnimalSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     # HyperlinkedIdentityField что бы сдалать ссылку на переход на объект
@@ -18,28 +19,8 @@ class AnimalSerializer(serializers.ModelSerializer):
         model = Animal
         fields = '__all__'
 
-# AnimalSerializer вот так это выглядит в jsone()
-#
-# [
-#     {
-#         "id": 9,
-#         "category": {
-#             "id": 11,
-#             "create": "2026-09-08T20:36:21.093266Z",
-#             "create_duplicated": "2026-09-08T20:36:21.093280Z",
-#             "update": "2026-09-08T20:36:21.093286Z",
-#             "name": "Медведь"
-#         },
-#         "food": [
-#             "Мясо",
-#             "Мед"
-#         ],
-#         "create": "2026-09-08T20:36:21.094823Z",
-#         "create_duplicated": "2026-09-08T20:36:21.094829Z",
-#         "update": "2026-09-08T20:36:21.097434Z",
-#         "name": "Борис",
-#         "a": 1,
-#         "b": 1,
-#         "d": 2
-#     }
-# ]
+# Это сериализатор будут для сохранения
+class AnimalCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Animal
+        fields = '__all__'

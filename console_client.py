@@ -1,82 +1,48 @@
 import requests
 
 
-# url = 'http://127.0.0.1:8000/api/categories/'
+url = 'http://127.0.0.1:8000/api/categories/'
+
+response = requests.get(url)
+assert 401 == response.status_code, response.status_code
+
+login = "user"
+password = "user"
+response = requests.get(url, auth=(login, password))
+assert 200 == response.status_code, response.status_code
+
+#Получаем токен, слабый для пет проектов
+data = {
+    "username": "admin",
+    "password": "admin",
+}
+url = 'http://127.0.0.1:8000/api-token-auth/'
+response = requests.post(url=url, data=data)
+token = response.json()['token']
+
+headers = {
+        "Authorization": f"Token {token}"
+    }
+
+url = 'http://127.0.0.1:8000/api/categories/'
+
+response = requests.get(url, headers=headers)
+assert 200 == response.status_code, response.status_code
+
+# Для рабочих проектов нужен JWT_TOKET https://jpadilla.github.io/django-rest-framework-jwt/
+
+# Часто используется токены для аутификации JSON Web Token Authentication(для средних проектов) и Djoser(для больших проектов)
+# https://www.django-rest-framework.org/api-guide/authentication/#installation-configuration_1
+
+url = 'http://127.0.0.1:8000/api/animas/'
 
 
-# HEAD
-# response = requests.head(url)
-# print(response.status_code)
-# print(response.headers)
+# login = "user"
+# password = "user"
+# response = requests.get(url, auth=(login, password))
+# assert 404 == response.status_code, response.status_code
 
-
-# GET
-# response = requests.get(url)
-# print(response.status_code)
-# response_json = response.json()
-# print(response.json())
-# print(type(response_json))
-
-
-# POST
-# data = {
-#     'name': 'New Animal',
-# }
-#
-# response = requests.post(url, json=data)
-# print(response.status_code)  # 201
-# print(response.json())
-
-# OPTIONS
-
-# response = requests.options(url)
-# print(response.status_code)  # 200
-# print(response.json())
-
-url = 'http://127.0.0.1:8000/api/categories/5/'
-
-# # HEAD
-# response = requests.head(url)
-# print(response.status_code)
-# print(response.headers)
-#
-#
-# # GET
-# response = requests.get(url)
-# print(response.status_code)
-# response_json = response.json()
-# print(response.json())
-# print(type(response_json))
-#
-#
-# # OPTIONS
-#
-# response = requests.options(url)
-# print(response.status_code)  # 200
-# print(response.json())
-
-# PUT
-
-# data = {
-#     'name': 'New Animal Put',
-# }
-#
-# response = requests.put(url, json=data)
-# print(response.status_code)  # 200
-# print(response.json())
-
-# PATCH
-
-# data = {
-#     'name': 'New Animal Patch',
-# }
-#
-# response = requests.put(url, json=data)
-# print(response.status_code)  # 200
-# print(response.json())
-
-# DELETE
-
-response = requests.delete(url)
-print(response.status_code)  # 204
-# print(response.json())
+login = "food_master"
+password = "food_master"
+response = requests.get(url, auth=(login, password))
+assert 200 == response.status_code, response.status_code
