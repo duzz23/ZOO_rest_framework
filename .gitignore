@@ -1,0 +1,5 @@
+/.gigacode/
+/.gigaide/
+/.idea/
+/.venv/
+/db.sqlite3

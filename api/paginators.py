@@ -15,3 +15,6 @@ class TimezonePagination(pagination.PageNumberPagination):
             'curent_time': datetime.now()
         })
 
+# Так бысрее работает пагинация так как не надо загружать весь список старниц + скрытность количество страниуц
+class CustomCursorPagination(pagination.CursorPagination):
+    ordering = '-create'

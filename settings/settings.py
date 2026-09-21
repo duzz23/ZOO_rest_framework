@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-1fj-#yc1+)%cykw61#$s(4$#(wsqu$els+a8v#5by7u7pbfg@%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     "django_rq",
     'rest_framework',
     'django_filters',
+    'rest_framework.authtoken',
+    'drf_yasg',
     # My
     'mainapp',
     'userapp',
@@ -155,12 +157,21 @@ RQ_QUEUES = {
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
-    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     # пагинация django rest https://www.django-rest-framework.org/api-guide/pagination/
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 1,
+    # Авторизация и андиформация https://www.django-rest-framework.org/api-guide/authentication/
+    # Авторизация по токену TokenAuthentication # https://www.django-rest-framework.org/api-guide/authentication/#basicauthentication
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ]
 }
 
-
+# django-cors-headers https://pypi.org/project/django-cors-headers/
+# django-cors-headers это библиотека для Django, которая позволяет отправлят запросы только с вписанных хостов CRF_TOKEN защита
+# Для общения фрот и бек через API

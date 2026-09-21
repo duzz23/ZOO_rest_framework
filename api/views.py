@@ -1,8 +1,9 @@
 from django.db.models.functions.math import Log
-from rest_framework import viewsets, views, response, generics, mixins
+from rest_framework import viewsets, views, response, generics, mixins, permissions
 from mainapp.models import Category, Animal
 from .filters import ProductFilter
-from .paginators import TimezonePagination
+from .paginators import TimezonePagination, CustomCursorPagination
+from .permission import IsFoodMaster
 from .serializers import CategorySerializer, AnimalSerializer, AnimalCreateSerializer
 from rest_framework.decorators import action
 
@@ -56,7 +57,11 @@ class AnimalViewSetMixins(
     # делаем свой фильтр. На совподения.
     filterset_class = ProductFilter
     #Свой пагинатор
-    pagination_class = TimezonePagination
+    pagination_class = CustomCursorPagination
+    # Добавляем наше кастомные права доступа IsFoodMaster
+    # permission_classes = [IsFoodMaster]
+    # permissions.Classes - это свойство выдает разные права доступа
+    permission_classes = [permissions.DjangoModelPermissions]
 
     """Важно Фильтрация
     Для вашего проекта оптимальной стратегией будет комбинированный подход: 
