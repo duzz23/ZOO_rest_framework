@@ -1,13 +1,18 @@
+import json
+
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, FormView
+from ai_agent import ask_ai
 from .models import Category, Animal
 from .forms import AnimalForm, ContactForm
 
 
 def index_view(request):
-    return render(request, 'mainapp/index.html')
+    return render(request, 'mainapp/index.html' , context={'title': 'Главная страница'})
 
 
 def category_list_view(request):
@@ -122,3 +127,18 @@ class ContactFormView(FormView):
         data = form.cleaned_data
         print('MESSAGE', data['message'])
         return super().form_valid(form)
+
+
+@require_POST
+def ai_chat_view(request):
+    """AJAX endpoint for the AI chat. Expects JSON with 'question' key."""
+    try:
+        data = json.loads(request.body)
+        question = data.get("question", "").strip()
+        if not question:
+            return JsonResponse({"error": "Question is required"}, status=400)
+
+        answer = ask_ai(question)
+        return JsonResponse({"answer": answer})
+    except Exception as e:
+        return JsonResponse({"error": "An error occurred while processing your question."}, status=500)

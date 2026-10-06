@@ -1,6 +1,9 @@
 from django.test import TestCase, SimpleTestCase
-from .models import Category, Animal
+
 from mixer.backend.django import mixer
+
+from mainapp.models import Animal, Category
+
 
 class TestCategory(TestCase):
 

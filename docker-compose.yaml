@@ -1,29 +1,76 @@
-version: "3"
-
 services:
-  pg:
-    image: postgres:15
-#    build: ...
-    environment:
-      POSTGRES_DB: shop
-      POSTGRES_USER: otus
-      POSTGRES_PASSWORD: otus12345
-      PGDATA: /var/lib/postgresql/data/pgdata
+  web:
+    build: .
+    container_name: zoo_web
+    command: >
+      bash -c "python manage.py migrate &&
+               python manage.py runserver 0.0.0.0:8000"
     ports:
-      - "5432:5432"
-#    volumes:
-#      - db-data:/var/lib/postgresql/data/pgdata
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - zoo_static:/app/static
+    environment:
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-dev-key}
+      - OLLAMA_API_URL=${OLLAMA_API_URL:-http://ollama:11434}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready", "-d", "shop", "-U", "otus" ]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval: 30s
-      timeout: 60s
-      retries: 5
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build: .
+    container_name: zoo_worker
+    command: python manage.py rqworker
+    volumes:
+      - .:/app
+    environment:
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - OLLAMA_API_URL=${OLLAMA_API_URL:-http://ollama:11434}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: zoo_redis
     ports:
-      - '6379:6379'
+      - "6379:6379"
+    volumes:
+      - zoo_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  ollama:
+    image: ollama/ollama
+    container_name: zoo_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - zoo_ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
-#volumes:
-#  db-data:
+volumes:
+  zoo_redis:
+  zoo_ollama_models:
+  zoo_static:

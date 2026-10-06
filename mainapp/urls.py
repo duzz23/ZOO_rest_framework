@@ -16,4 +16,5 @@ urlpatterns = [
     path('animal/create/', views.AnimalCreateView.as_view(), name='animal_create'),
 
     path('contact/', views.ContactFormView.as_view(), name='contact'),
+    path('ai-chat/', views.ai_chat_view, name='ai_chat'),
 ]
