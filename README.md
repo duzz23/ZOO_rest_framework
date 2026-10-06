@@ -373,3 +373,6 @@ python run_tests.py
 ## 📝 Лицензия
 
 Проект предназначен для образовательных целей.
+
+<img width="1907" height="853" alt="Снимок экрана — 2026-10-06 в 20 08 45" src="https://github.com/user-attachments/assets/55d78fde-2267-430d-b15b-c2a9b3bcc5b2" />
+
