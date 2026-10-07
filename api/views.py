@@ -10,7 +10,7 @@ from rest_framework.decorators import action
 
 # из коробки viewsets
 class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.all().order_by('-id')
     serializer_class = CategorySerializer
 
 # Кастомный viewsets

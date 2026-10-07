@@ -1,5 +1,9 @@
-/.gigacode/
-/.gigaide/
-/.idea/
 /.venv/
 /db.sqlite3
+.env
+.env.*
+!/.env.example
+/agent_llm_test/
+/.idea/
+/.gigaide/
+/.gigacode/

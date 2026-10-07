@@ -39,6 +39,11 @@
           <li class="nav-item">
             <a class="nav-link" href="{% url 'mainapp:contact' %}">Contact</a>
           </li>
+          <li class="nav-item">
+            <button class="btn btn-outline-info nav-link" type="button" data-bs-toggle="modal" data-bs-target="#aiChatModal">
+              <i class="bi bi-robot"></i> Ask the AI
+            </button>
+          </li>
           {% if user.is_authenticated %}
           hello, {{user.username}}
           <form method="post" action="{% url 'userapp:logout' %}">
@@ -78,11 +83,129 @@
 
   </footer>
 
+  <!-- AI Chat Modal -->
+  <div class="modal fade" id="aiChatModal" tabindex="-1" aria-labelledby="aiChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="aiChatModalLabel">
+            <i class="bi bi-robot"></i> Ask the AI
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" style="height: 500px; overflow-y: auto;">
+          <div id="chatMessages" class="mb-3">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Ask me anything about Antarctic Wallet!
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <form id="chatForm" class="d-flex w-100 gap-2">
+            <input type="text" id="chatInput" class="form-control" placeholder="Type your question..." autocomplete="off">
+            <button type="submit" class="btn btn-primary" id="chatSendBtn">
+              <i class="bi bi-send"></i> Send
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="{% static 'js/vendor/jquery-3.7.0.js' %}"></script>
   <script src="{% static 'js/vendor/bootstrap.js' %}"></script>
 </body>
 
 {% block scripts %}
+<script>
+$(document).ready(function() {
+  var chatMessages = $('#chatMessages');
+  var chatInput = $('#chatInput');
+  var chatForm = $('#chatForm');
+  var chatSendBtn = $('#chatSendBtn');
+
+  function addMessage(text, isUser) {
+    var wrapper = $('<div class="mb-2"></div>');
+    var bubble = $('<div class="p-2 rounded"></div>');
+
+    if (isUser) {
+      bubble.addClass('bg-primary text-white ms-auto')
+            .css('max-width', '80%').css('margin-left', 'auto');
+    } else {
+      bubble.addClass('bg-light text-dark')
+            .css('max-width', '80%');
+    }
+
+    bubble.text(text);
+    wrapper.append(bubble);
+    chatMessages.append(wrapper);
+
+    var modalBody = chatMessages.parent();
+    modalBody.scrollTop(modalBody[0].scrollHeight);
+  }
+
+  chatForm.on('submit', function(e) {
+    e.preventDefault();
+    var question = chatInput.val().trim();
+    if (!question) return;
+
+    chatInput.prop('disabled', true);
+    chatSendBtn.prop('disabled', true);
+
+    addMessage(question, true);
+    chatInput.val('');
+
+    var loading = $('<div class="mb-2"><div class="p-2 rounded bg-light text-dark">Thinking...</div></div>');
+    chatMessages.append(loading);
+
+    $.ajax({
+      url: '{% url "mainapp:ai_chat" %}',
+      type: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ question: question }),
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      success: function(response) {
+        loading.remove();
+        addMessage(response.answer, false);
+      },
+      error: function(xhr) {
+        loading.remove();
+        var errorMsg = 'Error: Could not get a response.';
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMsg = xhr.responseJSON.error;
+        }
+        addMessage(errorMsg, false);
+      },
+      complete: function() {
+        chatInput.prop('disabled', false);
+        chatSendBtn.prop('disabled', false);
+        chatInput.focus();
+      }
+    });
+  });
+
+  function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  $('#aiChatModal').on('shown.bs.modal', function() {
+    chatInput.focus();
+  });
+});
+</script>
 {% endblock %}
 
 </html>

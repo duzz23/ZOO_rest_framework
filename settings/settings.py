@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     # My
     'mainapp',
     'userapp',
+    'ai_agent',
 ]
 
 MIDDLEWARE = [
