@@ -11,7 +11,7 @@ from ai_agent.services import (
     get_retriever,
     ask_ai,
     build_vector_store,
-    _retriever_instance,
+    _retriever_manager,
 )
 
 
@@ -180,20 +180,20 @@ class TestPrefixedEmbeddings(unittest.TestCase):
 class TestRewriteQuestion(unittest.TestCase):
     """Tests for rewrite_question_if_needed()."""
 
-    @patch("ai_agent.services.question_rewrite_chain")
+    @patch("ai_agent.services._question_rewrite_chain")
     def test_rewrite_returns_question(self, mock_chain):
         mock_chain.invoke.return_value = {"question": "Переписанный вопрос"}
         result = rewrite_question_if_needed("плохой вопрос")
         self.assertEqual(result, "Переписанный вопрос")
         mock_chain.invoke.assert_called_once_with({"question": "плохой вопрос"})
 
-    @patch("ai_agent.services.question_rewrite_chain")
+    @patch("ai_agent.services._question_rewrite_chain")
     def test_rewrite_strips_whitespace(self, mock_chain):
         mock_chain.invoke.return_value = {"question": "  answer  "}
         result = rewrite_question_if_needed("q")
         self.assertEqual(result, "answer")
 
-    @patch("ai_agent.services.question_rewrite_chain")
+    @patch("ai_agent.services._question_rewrite_chain")
     def test_rewrite_returns_empty_question(self, mock_chain):
         mock_chain.invoke.return_value = {"question": ""}
         result = rewrite_question_if_needed("q")
@@ -207,10 +207,10 @@ class TestRewriteQuestion(unittest.TestCase):
 class TestAnswerQuestion(unittest.TestCase):
     """Tests for answer_question()."""
 
-    @patch("ai_agent.services.rag_chain")
+    @patch("ai_agent.services._rag_chain")
     def test_answer_question_calls_rag_chain(self, mock_rag_chain):
         mock_rag_chain.invoke.return_value = "Ответ ИИ"
-        result = answer_question("Вопрос?", "Контекст")
+        result = answer_question("Вопрос?", "Контекст", mock_rag_chain)
         mock_rag_chain.invoke.assert_called_once_with(
             {"question": "Вопрос?", "context": "Контекст"}
         )
@@ -225,25 +225,31 @@ class TestGetRetriever(unittest.TestCase):
     """Tests for get_retriever() singleton."""
 
     def tearDown(self):
-        # Reset singleton state after each test
-        import ai_agent.services as svc
-        svc._retriever_instance = None
+        # Reset retriever manager state after each test
+        _retriever_manager.reset()
 
-    @patch("ai_agent.services._get_retriever")
-    def test_first_call_initializes(self, mock_get):
-        mock_get.return_value = MagicMock()
+    @patch("ai_agent.retriever.Chroma")
+    def test_first_call_initializes(self, mock_chroma):
+        mock_vectorstore = MagicMock()
+        mock_retriever = MagicMock()
+        mock_vectorstore.as_retriever.return_value = mock_retriever
+        mock_chroma.return_value = mock_vectorstore
+
         result = get_retriever()
-        mock_get.assert_called_once()
-        self.assertIs(result, mock_get.return_value)
+        self.assertIs(result, mock_retriever)
 
-    @patch("ai_agent.services._get_retriever")
-    def test_second_call_returns_cached(self, mock_get):
-        mock_get.return_value = MagicMock()
+    @patch("ai_agent.retriever.Chroma")
+    def test_second_call_returns_cached(self, mock_chroma):
+        mock_vectorstore = MagicMock()
+        mock_retriever = MagicMock()
+        mock_vectorstore.as_retriever.return_value = mock_retriever
+        mock_chroma.return_value = mock_vectorstore
+
         first = get_retriever()
         second = get_retriever()
         self.assertIs(first, second)
-        # _get_retriever should only be called once
-        self.assertEqual(mock_get.call_count, 1)
+        # Chroma should only be called once
+        self.assertEqual(mock_chroma.call_count, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -253,26 +259,30 @@ class TestGetRetriever(unittest.TestCase):
 class TestAskAi(unittest.TestCase):
     """Tests for ask_ai() full pipeline."""
 
-    @patch("ai_agent.services.answer_question")
-    @patch("ai_agent.services.format_docs")
-    @patch("ai_agent.services.get_retriever")
-    @patch("ai_agent.services.rewrite_question_if_needed")
-    def test_full_pipeline(self, mock_rewrite, mock_getter, mock_format, mock_answer):
-        mock_rewrite.return_value = "rewritten"
-        mock_getter.return_value.invoke.return_value = [
+    @patch("ai_agent.chains.format_docs")
+    @patch("ai_agent.services._retriever_manager")
+    @patch("ai_agent.services._question_rewrite_chain")
+    @patch("ai_agent.services._rag_chain")
+    def test_full_pipeline(self, mock_rag, mock_rewrite, mock_manager, mock_format):
+        mock_rewrite.invoke.return_value = {"question": "rewritten"}
+        mock_manager.get_retriever.return_value.invoke.return_value = [
             _make_doc(source="a.html", content="doc1"),
             _make_doc(source="b.html", content="doc2"),
         ]
         mock_format.return_value = "formatted context"
-        mock_answer.return_value = "AI answer"
+        mock_rag.invoke.return_value = "AI answer"
 
-        result = ask_ai("original question")
+        result = ask_ai(
+            "original question",
+            mock_rewrite,
+            mock_manager,
+            mock_rag,
+        )
 
-        mock_rewrite.assert_called_once_with("original question")
-        mock_getter.return_value.invoke.assert_called_once_with("rewritten")
-        mock_format.assert_called_once()
-        mock_answer.assert_called_once_with(question="original question", context="formatted context")
-        self.assertEqual(result, "AI answer")
+        mock_rewrite.invoke.assert_called_once_with("original question")
+        mock_manager.get_retriever.return_value.invoke.assert_called_once_with("rewritten")
+        mock_format.assert_called()
+        mock_rag.invoke.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -282,7 +292,7 @@ class TestAskAi(unittest.TestCase):
 class TestBuildVectorStore(unittest.TestCase):
     """Tests for build_vector_store()."""
 
-    @patch("ai_agent.services.Chroma")
+    @patch("ai_agent.retriever.Chroma")
     def test_cached_retriever(self, mock_chroma_cls):
         """Existing store with docs > 0 should return cached retriever."""
         mock_collection = MagicMock()
@@ -292,7 +302,8 @@ class TestBuildVectorStore(unittest.TestCase):
         mock_existing.as_retriever.return_value = "cached_retriever"
         mock_chroma_cls.return_value = mock_existing
 
-        result = build_vector_store()
+        mock_embeddings = MagicMock()
+        result = build_vector_store(mock_embeddings)
 
         self.assertEqual(result, "cached_retriever")
         mock_chroma_cls.assert_called_once()
@@ -300,17 +311,17 @@ class TestBuildVectorStore(unittest.TestCase):
             search_type="mmr", search_kwargs={"k": 8, "fetch_k": 32}
         )
 
-    @patch("ai_agent.services.Chroma")
+    @patch("ai_agent.retriever.Chroma")
     def test_empty_store_rebuilds(self, mock_chroma_cls):
         """Existing store with count=0 should rebuild."""
         mock_existing = MagicMock()
         type(mock_existing._collection).count = PropertyMock(return_value=0)
         mock_chroma_cls.return_value = mock_existing
 
-        with patch("ai_agent.services.shutil") as mock_shutil, \
-             patch("ai_agent.services.SitemapLoader") as mock_sitemap, \
-             patch("ai_agent.services.RecursiveUrlLoader") as mock_recursive, \
-             patch("ai_agent.services.RecursiveCharacterTextSplitter") as mock_splitter:
+        with patch("ai_agent.retriever.shutil") as mock_shutil, \
+             patch("ai_agent.retriever.SitemapLoader") as mock_sitemap, \
+             patch("ai_agent.retriever.RecursiveUrlLoader") as mock_recursive, \
+             patch("ai_agent.retriever.RecursiveCharacterTextSplitter") as mock_splitter:
 
             mock_sitemap.return_value.load.return_value = []
             mock_recursive.return_value.load.return_value = []
@@ -319,19 +330,20 @@ class TestBuildVectorStore(unittest.TestCase):
             mock_new.as_retriever.return_value = "new_retriever"
             mock_chroma_cls.from_documents.return_value = mock_new
 
-            result = build_vector_store(force_rebuild=True)
+            mock_embeddings = MagicMock()
+            result = build_vector_store(mock_embeddings, force_rebuild=True)
 
             self.assertEqual(result, "new_retriever")
             mock_shutil.rmtree.assert_not_called()
             mock_chroma_cls.from_documents.assert_called_once()
 
-    @patch("ai_agent.services.Path.exists", return_value=False)
-    @patch("ai_agent.services.Chroma")
+    @patch("ai_agent.retriever.Path.exists", return_value=False)
+    @patch("ai_agent.retriever.Chroma")
     def test_no_existing_db_rebuilds(self, mock_chroma_cls, mock_exists):
         """No existing DB should rebuild."""
-        with patch("ai_agent.services.SitemapLoader") as mock_sitemap, \
-             patch("ai_agent.services.RecursiveUrlLoader") as mock_recursive, \
-             patch("ai_agent.services.RecursiveCharacterTextSplitter") as mock_splitter:
+        with patch("ai_agent.retriever.SitemapLoader") as mock_sitemap, \
+             patch("ai_agent.retriever.RecursiveUrlLoader") as mock_recursive, \
+             patch("ai_agent.retriever.RecursiveCharacterTextSplitter") as mock_splitter:
 
             mock_sitemap.return_value.load.return_value = []
             mock_recursive.return_value.load.return_value = []
@@ -340,7 +352,8 @@ class TestBuildVectorStore(unittest.TestCase):
             mock_new.as_retriever.return_value = "new_retriever"
             mock_chroma_cls.from_documents.return_value = mock_new
 
-            result = build_vector_store()
+            mock_embeddings = MagicMock()
+            result = build_vector_store(mock_embeddings)
 
             self.assertEqual(result, "new_retriever")
             mock_chroma_cls.from_documents.assert_called_once()

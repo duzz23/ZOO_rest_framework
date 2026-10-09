@@ -1,0 +1,3 @@
+установка библиотек (проверка кода на корректность)
+pip install pylint
+запуск pylint /Users/andrei/Desktop/Study/zoo/путь к фаилу

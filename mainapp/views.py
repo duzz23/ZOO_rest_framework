@@ -6,7 +6,13 @@ from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, FormView
-from ai_agent import ask_ai
+
+from ai_agent.api import ask_ai
+from ai_agent.prompts import create_llm, create_question_rewrite_chain
+from ai_agent.embeddings import create_embeddings
+from ai_agent.chains import create_rag_chain
+from ai_agent.retriever import RetrieverManager
+
 from .models import Category, Animal
 from .forms import AnimalForm, ContactForm
 
@@ -129,6 +135,32 @@ class ContactFormView(FormView):
         return super().form_valid(form)
 
 
+# Кэшированные зависимости для RAG
+_llm = None
+_embeddings = None
+_rewrite_chain = None
+_rag_chain = None
+_retriever_manager = None
+
+
+def _get_rag_dependencies():
+    """Ленивая инициализация RAG-зависимостей."""
+    global _llm, _embeddings, _rewrite_chain, _rag_chain, _retriever_manager
+
+    if _llm is None:
+        _llm = create_llm()
+    if _embeddings is None:
+        _embeddings = create_embeddings()
+    if _rewrite_chain is None:
+        _rewrite_chain = create_question_rewrite_chain(_llm)
+    if _rag_chain is None:
+        _rag_chain = create_rag_chain(_llm)
+    if _retriever_manager is None:
+        _retriever_manager = RetrieverManager(_embeddings)
+
+    return _rewrite_chain, _retriever_manager, _rag_chain
+
+
 @require_POST
 def ai_chat_view(request):
     """AJAX endpoint for the AI chat. Expects JSON with 'question' key."""
@@ -138,7 +170,13 @@ def ai_chat_view(request):
         if not question:
             return JsonResponse({"error": "Question is required"}, status=400)
 
-        answer = ask_ai(question)
+        rewrite_chain, retriever_manager, rag_chain = _get_rag_dependencies()
+        answer = ask_ai(
+            question=question,
+            rewrite_chain=rewrite_chain,
+            retriever_manager=retriever_manager,
+            rag_chain=rag_chain,
+        )
         return JsonResponse({"answer": answer})
     except Exception as e:
-        return JsonResponse({"error": "An error occurred while processing your question."}, status=500)
+        return JsonResponse({"error": str(e)}, status=500)
