@@ -1,5 +1,9 @@
 # Zoo API
 
+<img width="1907" height="853" alt="Снимок экрана — 2026-10-06 в 20 08 45" src="https://github.com/user-attachments/assets/55d78fde-2267-430d-b15b-c2a9b3bcc5b2" />
+
+<img width="1419" height="599" alt="Снимок экрана — 2026-10-12 в 11 14 14" src="https://github.com/user-attachments/assets/0c7597fd-a149-4f56-a66e-68a2763f1096" />
+
 REST API для управления зоопарком с AI-агентом на базе RAG (Retrieval-Augmented Generation).
 
 Проект представляет собой Django-приложение с DRF-интерфейсом и AI-агентом, который отвечает на вопросы посетителей о зоопарке Екатеринбурга, используя информацию с официального сайта [zoopark.ekaterinburg.rf](https://zoopark.ekaterinburg.rf/).
@@ -374,5 +378,5 @@ python run_tests.py
 
 Проект предназначен для образовательных целей.
 
-<img width="1907" height="853" alt="Снимок экрана — 2026-10-06 в 20 08 45" src="https://github.com/user-attachments/assets/55d78fde-2267-430d-b15b-c2a9b3bcc5b2" />
+
 
